@@ -16,7 +16,10 @@ import {
   Terminal,
   ArrowRight,
   Calendar,
-  Award
+  Award,
+  UserCircle,
+  Briefcase,
+  GitBranch
 } from 'lucide-react';
 import { 
   AreaChart,
@@ -334,45 +337,26 @@ const CodeBlock = ({ title, code }: { title: string, code: string }) => (
   </div>
 );
 
+const EntityNode = ({ title, icon, fields, color = "border-zinc-700", glow = false }: { title: string, icon: any, fields: {name: string, type: string}[], color?: string, glow?: boolean }) => (
+  <div className={`glass p-6 rounded-xl border ${color} min-w-[240px] relative z-10 bg-black/80 hover:scale-105 transition-transform duration-300 ${glow ? 'shadow-[0_0_30px_rgba(255,255,255,0.1)]' : ''}`}>
+    <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
+      <div className="p-2 bg-white/5 rounded-lg text-white">
+        {icon}
+      </div>
+      <span className="font-bold text-white tracking-wide">{title}</span>
+    </div>
+    <div className="space-y-2 font-mono text-xs">
+      {fields.map((f, i) => (
+        <div key={i} className="flex justify-between items-center group">
+          <span className="text-zinc-300 group-hover:text-white transition-colors">{f.name}</span>
+          <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors">{f.type}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const DatabaseSection = () => {
-  const mermaidCode = `erDiagram
-    User ||--o{ Candidate : "created/manages"
-    User ||--|{ ActivityLog : "performs"
-    Candidate ||--|{ CandidateSkill : "has"
-    Candidate ||--|{ Interview : "attends"
-    Candidate ||--|{ ActivityLog : "subject of"
-    Candidate ||--o| ConnectedCandidate : "is"
-    Candidate ||--o| RejectedCandidate : "is"
-
-    User {
-        int id PK
-        string email UK
-        string role "admin/candidate"
-        string password
-    }
-
-    Candidate {
-        int id PK
-        string name
-        string email UK
-        string status "qualified/pending/etc"
-        float score
-        int userId FK "Linked User Account"
-    }
-
-    CandidateSkill {
-        int id PK
-        int candidateId FK
-        string skillName
-    }
-
-    Interview {
-        int id PK
-        int candidateId FK
-        datetime date
-        string status
-    }`;
-
   const ddl = `-- Create Users Table
 CREATE TABLE users (
     id INTEGER NOT NULL AUTO_INCREMENT,
@@ -439,14 +423,80 @@ WHERE c.status = 'qualified';`;
     <section id="database" className="py-24 px-6 max-w-7xl mx-auto border-t border-zinc-900">
       <SectionHeader title="Database Schema" subtitle="Relational integrity modeled with Prisma and executed on MySQL." />
 
-      <div className="flex flex-col gap-12">
-        {/* Full Width ER Diagram */}
-        <div className="w-full">
-             <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-col gap-16">
+        {/* Simplified Visual Diagram */}
+        <div className="w-full flex flex-col items-center">
+             <div className="flex items-center gap-2 mb-8">
                 <Box className="text-white" /> 
-                <h3 className="text-2xl font-bold text-white">Entity Relationship Diagram (Mermaid)</h3>
+                <h3 className="text-2xl font-bold text-white">Entity Relationship Diagram</h3>
              </div>
-             <CodeBlock title="er_diagram.mermaid" code={mermaidCode} />
+             
+             <div className="relative p-10 w-full max-w-4xl flex flex-col items-center gap-16">
+                
+                {/* Connecting Lines (SVG Layer) */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-zinc-700" style={{zIndex: 0}}>
+                    {/* Line from User to Candidate */}
+                    <path d="M50% 120 V 220" fill="none" strokeWidth="2" strokeDasharray="5,5" />
+                    
+                    {/* Lines from Candidate to Children */}
+                    <path d="M50% 360 V 420 H 25% V 460" fill="none" strokeWidth="2" />
+                    <path d="M50% 360 V 420 H 75% V 460" fill="none" strokeWidth="2" />
+                    
+                    {/* Cardinality Markers */}
+                    <circle cx="50%" cy="120" r="3" fill="#52525b" />
+                    <circle cx="50%" cy="220" r="3" fill="#ffffff" />
+                </svg>
+
+                {/* Level 1: User */}
+                <EntityNode 
+                  title="User (Recruiter)" 
+                  icon={<Users size={20}/>} 
+                  fields={[
+                    {name: 'id', type: 'PK INT'},
+                    {name: 'email', type: 'UK String'},
+                    {name: 'role', type: 'String'}
+                  ]}
+                />
+
+                {/* Level 2: Candidate */}
+                <EntityNode 
+                  title="Candidate" 
+                  icon={<UserCircle size={20}/>} 
+                  fields={[
+                    {name: 'id', type: 'PK INT'},
+                    {name: 'userId', type: 'FK INT'},
+                    {name: 'status', type: 'String'},
+                    {name: 'score', type: 'Float'}
+                  ]}
+                  color="border-white/50"
+                  glow={true}
+                />
+
+                {/* Level 3: Children */}
+                <div className="flex flex-col md:flex-row gap-8 md:gap-32 w-full justify-center">
+                   <EntityNode 
+                    title="Skills" 
+                    icon={<Award size={20}/>} 
+                    fields={[
+                      {name: 'id', type: 'PK INT'},
+                      {name: 'candidateId', type: 'FK INT'},
+                      {name: 'skillName', type: 'String'}
+                    ]}
+                  />
+
+                   <EntityNode 
+                    title="Interviews" 
+                    icon={<Calendar size={20}/>} 
+                    fields={[
+                      {name: 'id', type: 'PK INT'},
+                      {name: 'candidateId', type: 'FK INT'},
+                      {name: 'date', type: 'DateTime'},
+                      {name: 'status', type: 'String'}
+                    ]}
+                  />
+                </div>
+
+             </div>
         </div>
 
         {/* Two Columns for DDL and DML */}
