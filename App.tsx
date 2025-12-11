@@ -19,7 +19,11 @@ import {
   Award,
   UserCircle,
   Briefcase,
-  GitBranch
+  GitBranch,
+  FileText,
+  UserCheck,
+  UserX,
+  Link as LinkIcon
 } from 'lucide-react';
 import { 
   AreaChart,
@@ -323,7 +327,7 @@ const CodeBlock = ({ title, code }: { title: string, code: string }) => (
               <span className="table-cell select-none text-zinc-700 text-right pr-4 w-8">{i + 1}</span>
               <span className="table-cell whitespace-pre text-zinc-300">
                 {line.split(' ').map((token, j) => {
-                  if (['CREATE', 'TABLE', 'INSERT', 'INTO', 'VALUES', 'SELECT', 'FROM', 'WHERE', 'UPDATE', 'SET', 'DELETE', 'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'NOT', 'NULL', 'DEFAULT', 'JOIN', 'ON', 'AS', 'AND', 'OR'].includes(token.toUpperCase())) return <span key={j} className="text-white font-bold mr-1">{token}</span>;
+                  if (['CREATE', 'TABLE', 'INSERT', 'INTO', 'VALUES', 'SELECT', 'FROM', 'WHERE', 'UPDATE', 'SET', 'DELETE', 'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'NOT', 'NULL', 'DEFAULT', 'JOIN', 'ON', 'AS', 'AND', 'OR', 'UNIQUE', 'INDEX', 'AUTO_INCREMENT'].includes(token.toUpperCase())) return <span key={j} className="text-white font-bold mr-1">{token}</span>;
                   if (['INTEGER', 'VARCHAR(191)', 'DATETIME(3)', 'DOUBLE', 'JSON'].includes(token.toUpperCase())) return <span key={j} className="text-zinc-400 mr-1 italic">{token}</span>;
                   if (token.startsWith("'")) return <span key={j} className="text-zinc-500 mr-1">{token}</span>;
                   return <span key={j} className="mr-1">{token}</span>;
@@ -337,15 +341,15 @@ const CodeBlock = ({ title, code }: { title: string, code: string }) => (
   </div>
 );
 
-const EntityNode = ({ title, icon, fields, color = "border-zinc-700", glow = false }: { title: string, icon: any, fields: {name: string, type: string}[], color?: string, glow?: boolean }) => (
-  <div className={`glass p-6 rounded-xl border ${color} min-w-[240px] relative z-10 bg-black/80 hover:scale-105 transition-transform duration-300 ${glow ? 'shadow-[0_0_30px_rgba(255,255,255,0.1)]' : ''}`}>
-    <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
-      <div className="p-2 bg-white/5 rounded-lg text-white">
+const EntityNode = ({ title, icon, fields, color = "border-zinc-700", glow = false, className = "" }: { title: string, icon: any, fields: {name: string, type: string}[], color?: string, glow?: boolean, className?: string }) => (
+  <div className={`glass p-5 rounded-xl border ${color} min-w-[200px] relative z-10 bg-black/80 hover:scale-105 transition-transform duration-300 ${glow ? 'shadow-[0_0_30px_rgba(255,255,255,0.1)]' : ''} ${className}`}>
+    <div className="flex items-center gap-3 mb-3 border-b border-white/10 pb-2">
+      <div className="p-1.5 bg-white/5 rounded-lg text-white">
         {icon}
       </div>
-      <span className="font-bold text-white tracking-wide">{title}</span>
+      <span className="font-bold text-white text-sm tracking-wide">{title}</span>
     </div>
-    <div className="space-y-2 font-mono text-xs">
+    <div className="space-y-1.5 font-mono text-[10px] leading-tight">
       {fields.map((f, i) => (
         <div key={i} className="flex justify-between items-center group">
           <span className="text-zinc-300 group-hover:text-white transition-colors">{f.name}</span>
@@ -360,139 +364,216 @@ const DatabaseSection = () => {
   const ddl = `-- Create Users Table
 CREATE TABLE users (
     id INTEGER NOT NULL AUTO_INCREMENT,
-    email VARCHAR(191) NOT NULL,
+    email VARCHAR(191) UNIQUE NOT NULL,
     name VARCHAR(191) NOT NULL,
     password VARCHAR(191) NOT NULL,
-    role VARCHAR(191) NOT NULL DEFAULT 'recruiter',
-    createdAt DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    PRIMARY KEY (id),
-    UNIQUE INDEX users_email_key(email)
+    role VARCHAR(191) DEFAULT 'recruiter',
+    createdAt DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id)
 );
 
 -- Create Candidates Table
 CREATE TABLE candidates (
     id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(191) NOT NULL,
-    email VARCHAR(191) NOT NULL,
+    email VARCHAR(191) UNIQUE NOT NULL,
     role VARCHAR(191) NOT NULL,
-    status VARCHAR(191) NOT NULL DEFAULT 'pending',
-    score DOUBLE NOT NULL DEFAULT 0,
+    status VARCHAR(191) DEFAULT 'pending',
+    score DOUBLE DEFAULT 0,
     scoreBreakdown JSON NULL,
     experience JSON NULL,
-    photoUrl VARCHAR(191) NULL,
-    appliedDate DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updatedAt DATETIME(3) NOT NULL,
-    userId INTEGER NULL,
+    userId INTEGER UNIQUE NULL,
     createdById INTEGER NULL,
     PRIMARY KEY (id),
-    UNIQUE INDEX candidates_email_key(email)
+    FOREIGN KEY (userId) REFERENCES users(id),
+    FOREIGN KEY (createdById) REFERENCES users(id)
 );
 
--- Create Skills Table
-CREATE TABLE candidate_skills (
+-- Create ActivityLog Table
+CREATE TABLE activity_log (
+    id INTEGER NOT NULL AUTO_INCREMENT,
+    action VARCHAR(191) NOT NULL,
+    description VARCHAR(191) NOT NULL,
+    candidateId INTEGER NULL,
+    userId INTEGER NULL,
+    createdAt DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    FOREIGN KEY (candidateId) REFERENCES candidates(id),
+    FOREIGN KEY (userId) REFERENCES users(id)
+);
+
+-- Create Interview Table
+CREATE TABLE interviews (
     id INTEGER NOT NULL AUTO_INCREMENT,
     candidateId INTEGER NOT NULL,
-    skillName VARCHAR(191) NOT NULL,
+    date DATETIME(3) NOT NULL,
+    status VARCHAR(191) DEFAULT 'scheduled',
+    notes VARCHAR(191) NULL,
     PRIMARY KEY (id),
-    UNIQUE INDEX candidate_skills_candidateId_skillName_key(candidateId, skillName)
-);`;
+    FOREIGN KEY (candidateId) REFERENCES candidates(id)
+);
+
+-- Create Connected/Rejected Tables
+CREATE TABLE connected_candidates (
+    id INTEGER NOT NULL AUTO_INCREMENT,
+    candidateId INTEGER UNIQUE NOT NULL,
+    connectedAt DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    FOREIGN KEY (candidateId) REFERENCES candidates(id)
+);
+CREATE TABLE rejected_candidates ( ... );`;
 
   const dml = `-- Insert a New Candidate
-INSERT INTO candidates (name, email, role, status, score, appliedDate, updatedAt)
-VALUES ('Jane Doe', 'jane@example.com', 'Senior Developer', 'pending', 95.5, NOW(), NOW());
+INSERT INTO candidates (name, email, role, status, score, appliedDate)
+VALUES ('Jane Doe', 'jane@example.com', 'Senior Developer', 'pending', 95.5, NOW());
 
--- Update Candidate Status
-UPDATE candidates 
-SET status = 'qualified', updatedAt = NOW()
-WHERE id = 101;
+-- Log an Activity
+INSERT INTO activity_log (action, description, userId, candidateId)
+VALUES ('create', 'Created candidate Jane Doe', 1, 101);
 
--- Retrieve Dashboard Stats
-SELECT COUNT(*) FROM candidates;
-SELECT COUNT(*) FROM candidates WHERE status = 'qualified';
+-- Connect a Candidate
+INSERT INTO connected_candidates (candidateId, connectedAt)
+VALUES (101, NOW());
 
--- Delete a Candidate (Cascade)
-DELETE FROM candidates WHERE id = 101;
-
--- Join Query: Get Candidates with Skills
-SELECT c.name, c.score, s.skillName
+-- Retrieve Candidate Dashboard
+SELECT c.name, c.status, i.date as interviewDate
 FROM candidates c
-JOIN candidate_skills s ON c.id = s.candidateId
+LEFT JOIN interviews i ON c.id = i.candidateId
 WHERE c.status = 'qualified';`;
 
   return (
     <section id="database" className="py-24 px-6 max-w-7xl mx-auto border-t border-zinc-900">
-      <SectionHeader title="Database Schema" subtitle="Relational integrity modeled with Prisma and executed on MySQL." />
+      <SectionHeader title="Database Schema" subtitle="Full relational integrity modeled with Prisma and executed on MySQL." />
 
       <div className="flex flex-col gap-16">
-        {/* Simplified Visual Diagram */}
+        {/* Full Visual Diagram */}
         <div className="w-full flex flex-col items-center">
              <div className="flex items-center gap-2 mb-8">
                 <Box className="text-white" /> 
                 <h3 className="text-2xl font-bold text-white">Entity Relationship Diagram</h3>
              </div>
              
-             <div className="relative p-10 w-full max-w-4xl flex flex-col items-center gap-16">
+             {/* Flex-based Tree Layout */}
+             <div className="relative w-full max-w-5xl flex flex-col gap-16 items-center p-8">
                 
-                {/* Connecting Lines (SVG Layer) */}
+                {/* SVG Connections - Absolute Overlay */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-zinc-700" style={{zIndex: 0}}>
-                    {/* Line from User to Candidate */}
-                    <path d="M50% 120 V 220" fill="none" strokeWidth="2" strokeDasharray="5,5" />
+                    {/* User to Candidate (Vertical) */}
+                    <path d="M50% 140 V 220" fill="none" strokeWidth="2" strokeDasharray="4,4" />
                     
-                    {/* Lines from Candidate to Children */}
-                    <path d="M50% 360 V 420 H 25% V 460" fill="none" strokeWidth="2" />
-                    <path d="M50% 360 V 420 H 75% V 460" fill="none" strokeWidth="2" />
+                    {/* User to ActivityLog (Curved) */}
+                    <path d="M55% 90 H 80% V 220" fill="none" strokeWidth="1" strokeOpacity="0.5" />
+
+                    {/* Candidate to ActivityLog (Horizontal) */}
+                    <path d="M60% 300 H 70%" fill="none" strokeWidth="1" strokeOpacity="0.5" />
+
+                    {/* Candidate to Children (Branching) */}
+                    <path d="M50% 380 V 430" fill="none" strokeWidth="2" />
                     
-                    {/* Cardinality Markers */}
-                    <circle cx="50%" cy="120" r="3" fill="#52525b" />
+                    {/* Horizontal Branch Bar */}
+                    <path d="M15% 430 H 85%" fill="none" strokeWidth="2" />
+
+                    {/* Vertical Drops to Children */}
+                    <path d="M15% 430 V 460" fill="none" strokeWidth="2" />
+                    <path d="M38% 430 V 460" fill="none" strokeWidth="2" />
+                    <path d="M62% 430 V 460" fill="none" strokeWidth="2" />
+                    <path d="M85% 430 V 460" fill="none" strokeWidth="2" />
+                    
+                    {/* Dots */}
+                    <circle cx="50%" cy="140" r="3" fill="#52525b" />
                     <circle cx="50%" cy="220" r="3" fill="#ffffff" />
+                    <circle cx="50%" cy="380" r="3" fill="#ffffff" />
                 </svg>
 
                 {/* Level 1: User */}
-                <EntityNode 
-                  title="User (Recruiter)" 
-                  icon={<Users size={20}/>} 
-                  fields={[
-                    {name: 'id', type: 'PK INT'},
-                    {name: 'email', type: 'UK String'},
-                    {name: 'role', type: 'String'}
-                  ]}
-                />
+                <div className="flex justify-center w-full relative">
+                    <EntityNode 
+                      title="User" 
+                      icon={<Users size={18}/>} 
+                      fields={[
+                        {name: 'id', type: 'PK Int'},
+                        {name: 'email', type: 'UK String'},
+                        {name: 'role', type: 'String'},
+                        {name: 'candidates', type: 'Relation[]'}
+                      ]}
+                    />
+                </div>
 
-                {/* Level 2: Candidate */}
-                <EntityNode 
-                  title="Candidate" 
-                  icon={<UserCircle size={20}/>} 
-                  fields={[
-                    {name: 'id', type: 'PK INT'},
-                    {name: 'userId', type: 'FK INT'},
-                    {name: 'status', type: 'String'},
-                    {name: 'score', type: 'Float'}
-                  ]}
-                  color="border-white/50"
-                  glow={true}
-                />
+                {/* Level 2: Candidate & Activity Log */}
+                <div className="flex justify-center items-center gap-12 w-full relative">
+                    <EntityNode 
+                      title="Candidate" 
+                      icon={<UserCircle size={18}/>} 
+                      fields={[
+                        {name: 'id', type: 'PK Int'},
+                        {name: 'status', type: 'String'},
+                        {name: 'score', type: 'Float'},
+                        {name: 'cvFile', type: 'String?'},
+                        {name: 'userId', type: 'FK Int?'}
+                      ]}
+                      color="border-white/50"
+                      glow={true}
+                      className="min-w-[240px]"
+                    />
+                    
+                    <div className="absolute right-[10%] top-0 hidden lg:block">
+                         <EntityNode 
+                          title="ActivityLog" 
+                          icon={<FileText size={18}/>} 
+                          fields={[
+                            {name: 'id', type: 'PK Int'},
+                            {name: 'action', type: 'String'},
+                            {name: 'userId', type: 'FK Int'},
+                            {name: 'candidateId', type: 'FK Int'}
+                          ]}
+                          color="border-zinc-800"
+                          className="opacity-80 scale-90"
+                        />
+                    </div>
+                </div>
 
                 {/* Level 3: Children */}
-                <div className="flex flex-col md:flex-row gap-8 md:gap-32 w-full justify-center">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full relative pt-8">
                    <EntityNode 
                     title="Skills" 
-                    icon={<Award size={20}/>} 
+                    icon={<Award size={16}/>} 
                     fields={[
-                      {name: 'id', type: 'PK INT'},
-                      {name: 'candidateId', type: 'FK INT'},
+                      {name: 'id', type: 'PK Int'},
+                      {name: 'candidateId', type: 'FK'},
                       {name: 'skillName', type: 'String'}
                     ]}
+                    className="mx-auto"
                   />
-
                    <EntityNode 
                     title="Interviews" 
-                    icon={<Calendar size={20}/>} 
+                    icon={<Calendar size={16}/>} 
                     fields={[
-                      {name: 'id', type: 'PK INT'},
-                      {name: 'candidateId', type: 'FK INT'},
+                      {name: 'id', type: 'PK Int'},
+                      {name: 'candidateId', type: 'FK'},
                       {name: 'date', type: 'DateTime'},
                       {name: 'status', type: 'String'}
                     ]}
+                    className="mx-auto"
+                  />
+                  <EntityNode 
+                    title="Connected" 
+                    icon={<UserCheck size={16}/>} 
+                    fields={[
+                      {name: 'id', type: 'PK Int'},
+                      {name: 'candidateId', type: 'FK'},
+                      {name: 'connectedAt', type: 'Date'}
+                    ]}
+                    className="mx-auto"
+                  />
+                   <EntityNode 
+                    title="Rejected" 
+                    icon={<UserX size={16}/>} 
+                    fields={[
+                      {name: 'id', type: 'PK Int'},
+                      {name: 'candidateId', type: 'FK'},
+                      {name: 'rejectedAt', type: 'Date'}
+                    ]}
+                    className="mx-auto"
                   />
                 </div>
 
