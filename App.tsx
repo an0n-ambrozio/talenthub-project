@@ -27,7 +27,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from 'recharts';
-import { NavItem, Phase } from './types';
+import { NavItem, Phase } from './types.ts';
 
 // --- Components ---
 
